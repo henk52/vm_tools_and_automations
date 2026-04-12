@@ -1,0 +1,78 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  interactive-sections:
+    - identity
+    - storage.crypto
+    - storage.config.crypto
+
+  identity:
+    hostname: ubuntu-host
+    username: user
+    password: "$6$rounds=4096$PLACEHOLDER$PLACEHOLDER..."  # placeholder only; user will override interactively
+
+  locale: en_US
+  keyboard:
+    layout: us
+  timezone: Etc/UTC
+
+  storage:
+    layout:
+      name: direct
+    config:
+      - id: disk0
+        type: disk
+        match:
+          size: largest
+        ptable: gpt
+        wipe: superblock-recursive
+        preserve: false
+        grub_device: true
+        partitions:
+          - id: efi
+            size: 512M
+            flag: boot
+            type: fat32
+            mount: /boot/efi
+          - id: luks-part
+            size: -1
+            flag: ''
+            type: crypto_LUKS
+            wipe: superblock
+            preserve: false
+            crypto:
+              dm_name: cryptroot
+              # no password specified → prompt user for it interactively
+              volume:
+                type: lvm_volgroup
+                name: vg0
+                volumes:
+                  - id: lv-root
+                    name: root
+                    type: lvm_lv
+                    size: -1
+                    filesystem: ext4
+                    mount: /
+                  - id: lv-swap
+                    name: swap
+                    type: lvm_lv
+                    size: 18G
+                    filesystem: swap
+                    mount: none
+
+  late-commands:
+    # late-commands section (runs in target system chroot, after install but before reboot.
+    
+    # Mount the installed system (already done by installer)
+    # Find swap partition UUID and update GRUB for hibernation
+    - curtin in-target --target=/target bash -c '
+        # Identify swap logical volume (inside LUKS)
+        SWAP_PATH="/dev/mapper/vg0-swap"
+        if [ -b "$SWAP_PATH" ]; then
+          sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"quiet splash resume=$SWAP_PATH\"|" /etc/default/grub
+          echo "RESUME=$SWAP_PATH" > /etc/initramfs-tools/conf.d/resume
+          update-grub
+          update-initramfs -u -k all
+        fi
+      '
