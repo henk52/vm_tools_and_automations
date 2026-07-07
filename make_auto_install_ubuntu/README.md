@@ -2,6 +2,10 @@
 
 ## Introduction
 
+### Purpose
+
+Describe how to create an Autoinstallation ISO for Ubuntu.
+
 ### References
 
 * [How to optimize installation process during offline autoinstall Ubuntu 22.04?](https://askubuntu.com/questions/1490821/how-to-optimize-installation-process-during-offline-autoinstall-ubuntu-22-04)
@@ -40,3 +44,12 @@ e.g.
 
 - mount | grep Ubunt
 - sudo mount -o remount,rw /dev/sdf1
+
+#### Investigate a qcow2
+
+
+- sudo mkdir -p /mnt/qcow2
+- sudo guestmount -a ~/tmp/disk.qcow2 -i --ro /mnt/qcow2
+- ls /mnt/qcow2
+- # When done:
+  - sudo guestunmount /mnt/qcow2
