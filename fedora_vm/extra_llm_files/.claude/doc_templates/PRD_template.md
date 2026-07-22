@@ -2,34 +2,55 @@
 
 ## Introduction
 
+### Executive summary
+
 ### Purpose
 
 <!-- 1-2 sentences: document purpose. -->
-
-### Executive summary
-
-### Scope
 
 ### Vocabulary
 
 <!-- Bullet list of uncommon terms. Alphabetical. -->
 
 - FIP - Feature Implementation Proposal
-- MRD - Marketing
+- MRD - Marketing Requirement Document.
 
 ### References
 
 <!-- Bullet list of external links/references. -->
+
+### Scope
 
 ### Who is this document for
 
 ### Overview
 
 <!-- Text + optional diagram. -->
+<!-- An elevator pitch, vision, and the specific user problem you are solving. -->
 
 <!-- Additional sections as needed. -->
 
-## Functional Requirements
+## Market assessment and target demographics
+
+### Goals
+### Metrics
+
+#### Clear success metrics
+#### Key Performance Indicators (KPIs)
+
+### User personas
+
+## Features and User Stories
+
+<!-- Core functionalities, prioritized must-haves vs. nice-to-haves, and step-by-step user interactions. -->
+
+## User Experience (UX)
+
+<!-- Wireframes, mockups, or user flow diagrams. -->
+
+## Requirements
+
+### Functional Requirements
 
 ### Use cases
 
@@ -56,19 +77,7 @@
 - Notes and issues:
 -->
 
-## External Interfaces
+## Risks, Constraints and Dependencies
 
-## Integration and testing requirements
-
-## Migration and upgrade requirements
-
-## Performance requirements
-
-## Service and feature interactions
-
-## Standards and Interoperability
-
-## Provisioning
-
-## Architectural Requirements
+<!--  Any technical limitations, project dependencies, or business assumptions. -->
 

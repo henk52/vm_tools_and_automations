@@ -33,7 +33,6 @@ install media is: CentOS-Stream-10-latest-x86_64-dvd1.iso
 
 ### TODO
 
-- write how to dump and clean the qcow
 - write how to start a new vm using terraform
 - Generate AIOS Agentic OS
 - How to handle when a AI VM disappears?
@@ -71,7 +70,9 @@ region = us-east-1
 - ./virt_cloud_builder.sh ks_centos10_minimal base_centos10_minimal
 - ./create_llm_base_vm.sh llm_vm base_centos10_minimal
 - ./run_vm.sh llm_vm
-- ssh -i llm_devops -o IdentitiesOnly=yes llm@192.168.122.139
+- ./connect_llm.sh
+  - ssh -i vm_llm -o IdentitiesOnly=yes llm@192.168.122.73
+- ./sync_to_vm.sh extra_llm_files 192.168.122.73 test
 
 
 ### Create the original VM
@@ -103,6 +104,10 @@ region = us-east-1
 
 Manually copying .qcow2 files around: sudo qemu-img convert -p -O qcow2 /var/lib/libvirt/images/${ORG_IMAGE_NAME}.qcow2 ~/tmp/${ORG_IMAGE_NAME}.qcow2
 
+#### Base image requirements
+
+- rsync - to enable rsync data between host and guest, both have to have rsync installed.
+
 #### error: failed to get domain 'ks_centos10-minimal'
 
 ### Create the LLM VM
@@ -112,8 +117,8 @@ Manually copying .qcow2 files around: sudo qemu-img convert -p -O qcow2 /var/lib
   VM (`${VM_NAME}-llm`) from it.
 - The ISO provisions an unprivileged `llm` user (no sudo) with SSH access, and
   installs the Claude Code CLI for that user on first boot.
-- Generates a dedicated `llm_devops` / `llm_devops.pub` keypair on first run.
-- ssh -i llm_devops -o IdentitiesOnly=yes llm@<ip>
+- Generates a dedicated `vm_llm` / `vm_llm.pub` keypair on first run.
+- ssh -i vm_llm -o IdentitiesOnly=yes llm@<ip>
 
 ### Access as llm
 

@@ -36,7 +36,7 @@ VCPUS=2
 MEM_MB=8192
 DISK_PATH="/var/lib/libvirt/images/${LLM_VM_NAME}.qcow2"
 CLOUDINIT_ISO="/var/lib/libvirt/images/${LLM_VM_NAME}-cloudinit.iso"
-LLM_SSH_KEY="$(dirname "$0")/llm_devops"
+LLM_SSH_KEY="$(dirname "$0")/vm_llm"
 LLM_SSH_PUB="${LLM_SSH_KEY}.pub"
 # The "devops" account and its key are baked into the base image by ks.cfg.
 # Not needed by this script (cloud-init completion is verified without
@@ -64,7 +64,7 @@ fi
 # Generate a dedicated keypair for the unprivileged "llm" user, if missing.
 if [[ ! -f "$LLM_SSH_KEY" ]]; then
     echo "==> Generating SSH keypair for the llm user: $LLM_SSH_KEY"
-    ssh-keygen -q -N "" -t ed25519 -f "$LLM_SSH_KEY" -C "llm-devops"
+    ssh-keygen -q -N "" -t ed25519 -f "$LLM_SSH_KEY" -C "llm account for $LLM_VM_NAME"
 fi
 
 echo "==> Packaging extra_llm_files for the llm user"

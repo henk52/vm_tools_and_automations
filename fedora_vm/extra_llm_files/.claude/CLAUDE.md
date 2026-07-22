@@ -22,8 +22,10 @@ When creating or substantially restructuring a standalone documentation file (ar
 
 - DESIGN_template.md - architecture/system design docs: component decomposition, context diagrams, component interconnection, per-component communication. Use for any doc describing how a system's pieces fit together.
 - DEVELOPMENT_template.md - developer-facing repo docs: toolchain setup, local dev loop, test environment, how-to guides, troubleshooting. Use for onboarding/README/CONTRIBUTING-style docs.
-- PRODUCT_REQUIREMENT_DOCUMENT_template.md - PRDs: executive summary plus overview/requirements sections.
+- FIP_template.md - Feature Implementation Proposal. For documenting proposal for new features to existing producs.
 - generic_template.md - fallback for any other standalone doc that doesn't fit the above (short notes, one-off write-ups).
+- PRD_template.md - Top level Product Requirement Documentation.
+- SRS_template.md - Software Requirements Specification. For sub application with a top level Product Requirement Documentation.
 
 If unsure which fits, ask rather than guessing.
 
