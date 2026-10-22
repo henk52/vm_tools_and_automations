@@ -29,8 +29,8 @@ echo "    Connect to serial console : virsh console $ACTUAL_VM_NAME"
 echo "    Find its IP               : virsh domifaddr $ACTUAL_VM_NAME"
 guest_vm_ip=$(virsh domifaddr "$ACTUAL_VM_NAME" | awk '/ipv4/ {print $4}' | cut -d/ -f1)
 if [[ -n "$guest_vm_ip" ]]; then
-    echo "    SSH (once you know the IP): ssh -i vm_devops -o IdentitiesOnly=yes devops@${guest_vm_ip}"
+    echo "    SSH (once you know the IP): ssh -i vm_llm -o IdentitiesOnly=yes llm@${guest_vm_ip}"
 else
-    echo "    SSH (once you know the IP): ssh -i vm_devops -o IdentitiesOnly=yes devops@<ip>"
+    echo "    SSH (once you know the IP): ssh -i vm_llm -o IdentitiesOnly=yes llm@<ip>"
 fi
 echo "    When done run: virsh destroy $ACTUAL_VM_NAME"

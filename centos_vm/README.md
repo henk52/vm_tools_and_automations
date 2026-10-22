@@ -67,13 +67,28 @@ region = us-east-1
 
 - ./destroy_base_vm.sh
 - ./create_base_vm.sh
-- ./virt_cloud_builder.sh ks_centos10_minimal base_centos10_minimal
-- ./create_llm_base_vm.sh llm_vm base_centos10_minimal
+- ./virt_cloud_builder.sh ks_centos_minimal base_centos_minimal
+- ./create_llm_base_vm.sh base_llm_vm base_centos_minimal
+- ./clone_llm_base_vm.sh llm_vm base_llm_vm
 - ./run_vm.sh llm_vm
 - ./connect_llm.sh
   - ssh -i vm_llm -o IdentitiesOnly=yes llm@192.168.122.73
 - ./sync_to_vm.sh extra_llm_files 192.168.122.73 test
 
+#### Allow a VM to r/w s subdir in the host
+
+- sudo virt-xml llm_vm --edit --memorybacking access.mode=shared,source.type=memfd
+- sudo virt-xml llm_vm --add-device --filesystem type=mount,accessmode=passthrough,driver.type=virtiofs,source.dir=/home/$USER/workspace,target.dir=workspace
+
+
+
+- ssh -i vm_devops -o IdentitiesOnly=yes devops@192.168.122.216
+- Inside the vm
+  - su -
+  - mkdir -p /mnt/workspace
+  - mount -t virtiofs workspace /mnt/workspace
+  - /etc/fstab
+    - workspace  /mnt/workspace  virtiofs  defaults  0 0
 
 ### Create the original VM
 

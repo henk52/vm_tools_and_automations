@@ -38,10 +38,7 @@ DISK_PATH="/var/lib/libvirt/images/${LLM_VM_NAME}.qcow2"
 CLOUDINIT_ISO="/var/lib/libvirt/images/${LLM_VM_NAME}-cloudinit.iso"
 LLM_SSH_KEY="$(dirname "$0")/vm_llm"
 LLM_SSH_PUB="${LLM_SSH_KEY}.pub"
-# The "devops" account and its key are baked into the base image by ks.cfg.
-# Not needed by this script (cloud-init completion is verified without
-# booting - see below), but handy for manually logging in to troubleshoot.
-DEVOPS_SSH_KEY="$(dirname "$0")/vm_devops"
+
 
 # Get the latest glab version: curl -s "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" | grep -oP '"tag_name":"\K[^"]+' | head -n 1
 GLAB_TAG="1.106.0"
@@ -179,10 +176,9 @@ else
     echo "         Inspect with: sudo virt-cat -d $LLM_VM_NAME /var/log/cloud-init-output.log"
 fi
 
-echo
-echo "==> VM '$LLM_VM_NAME' is provisioned and shut off, ready to transfer."
-echo "    Disk       : $DISK_PATH"
-echo "    Start it   : virsh start $LLM_VM_NAME"
-echo "    Find its IP: virsh domifaddr $LLM_VM_NAME"
-echo "    SSH        : ssh -i $LLM_SSH_KEY -o IdentitiesOnly=yes llm@<ip>"
-echo "    Rescue SSH : ssh -i $DEVOPS_SSH_KEY -o IdentitiesOnly=yes devops@<ip>"
+echo "==> eject iso"
+virsh change-media $LLM_VM_NAME sda --eject --config
+
+echo "==> clean vm to be ready for cloning"
+sudo virt-sysprep --domain "$LLM_VM_NAME" --operations defaults,-ssh-userdir
+
