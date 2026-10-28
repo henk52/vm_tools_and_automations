@@ -1,0 +1,2 @@
+- Once on Fedora switch the ext4 partitions to xfs in ks.cfg
+  - Ubuntu 22 does not understand fedora 44 xfs

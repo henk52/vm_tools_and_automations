@@ -1,0 +1,3 @@
+# Gemini configurations
+
+WILL BE OVERWRITTEN DURING INSTALLATION ON VM.

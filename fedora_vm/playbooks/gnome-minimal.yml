@@ -1,0 +1,39 @@
+- name: Install minimal GNOME on Fedora
+  hosts: localhost
+  become: true
+  tasks:
+    - name: Ensure libdnf5 Python bindings (needed by dnf5 module)
+      ansible.builtin.raw: rpm -q python3-libdnf5 || dnf install -y python3-libdnf5
+      changed_when: false
+
+    - name: Install minimal GNOME packages
+      ansible.builtin.dnf5:
+        name:
+          - "@base-graphical"
+          - gdm
+          - gnome-shell
+          - gnome-calculator
+          - ptyxis
+          - nautilus
+          - gnome-control-center
+          - gnome-abrt
+          - gnome-logs
+          - gnome-system-monitor
+          - gnome-packagekit
+          - gnome-text-editor
+          - chromium
+          - firefox
+        state: present
+
+    - name: Get current default target
+      ansible.builtin.command: systemctl get-default
+      register: default_target
+      changed_when: false
+
+    - name: Set graphical target as default
+      ansible.builtin.command: systemctl set-default graphical.target
+      when: default_target.stdout != "graphical.target"
+
+    - name: Set Danish keyboard
+      ansible.builtin.command: localectl set-x11-keymap dk
+      changed_when: true

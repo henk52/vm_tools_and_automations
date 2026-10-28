@@ -1,0 +1,42 @@
+# Minimal GNOME desktop for Fedora, run locally by cloud-init (as root).
+# Manual run: ansible-playbook -i localhost, -c local gnome-desktop.yml
+- name: Install minimal GNOME on Fedora
+  hosts: localhost
+  connection: local
+  become: true
+  tasks:
+    - name: Install minimal GNOME packages
+      ansible.builtin.dnf5:
+        name:
+          - "@base-graphical"
+          - gdm
+          - gnome-shell
+          - gnome-control-center
+          - ptyxis
+          - nautilus
+          - spice-vdagent
+          - gnome-control-center
+          - gnome-abrt
+          - gnome-logs
+          - gnome-system-monitor
+          - gnome-packagekit
+          - gnome-text-editor
+          - chromium
+          - firefox
+        state: present
+
+    - name: Set Danish keyboard (console, GDM and default for GNOME)
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - localectl set-keymap dk
+        - localectl set-x11-keymap dk
+      changed_when: true
+
+    - name: Get current default target
+      ansible.builtin.command: systemctl get-default
+      register: default_target
+      changed_when: false
+
+    - name: Boot into the GUI by default
+      ansible.builtin.command: systemctl set-default graphical.target
+      when: default_target.stdout != "graphical.target"

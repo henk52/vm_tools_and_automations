@@ -1,0 +1,452 @@
+---
+- name: DevOps Laptop Setup - Fedora
+  hosts: localhost
+  connection: local
+  become: false
+  vars:
+    user: devops
+    home_dir: "/home/{{ user }}"
+    downloads_dir: "{{ ansible_env.HOME }}/Downloads"
+
+  tasks:
+
+    # ===================================================================
+    # System Update
+    # ===================================================================
+
+    - name: Update all packages
+      become: true
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+
+    # ===================================================================
+    # System Packages
+    # ===================================================================
+
+    - name: Install development tools group
+      become: true
+      ansible.builtin.dnf:
+        name: "@development-tools"
+        state: present
+
+    - name: Install system packages
+      become: true
+      ansible.builtin.dnf:
+        state: present
+        name:
+          - autoconf
+          - automake
+          - bash
+          - bash-completion
+          - bind-utils        # bind9-dnsutils, bind9-host, bind9-libs
+          - binutils
+          - bzip2
+          - ca-certificates
+          - certmonger
+          - coreutils
+          - curl
+          - java-latest-openjdk-headless
+          - java-latest-openjdk
+          - util-linux
+          - filezilla
+          - findutils
+          - firefox
+          - ftp
+          - gcc
+          - gcc-c++           # g++
+          - gdisk
+          - gedit
+          - git
+          - golang
+          - gnupg2            # gpg, gpg-agent, gpgsm, gpgv, gpgconf
+          - graphviz
+          - jq
+          - keychain
+          - fuse-libs         # libfuse2
+          - openssl
+          - openvpn
+          - screen
+          - shellcheck
+          - simple-scan
+          - tar
+          - tcpdump
+          - telnet
+          - tmux
+          - unzip
+          - util-linux
+          - libuuid-devel     # uuid-dev, uuid-runtime
+          - vim
+          - wget
+          - whois
+          - zip
+          - zsh
+
+    # ===================================================================
+    # goreleaser
+    # ===================================================================
+
+    - name: Check if goreleaser is installed
+      ansible.builtin.command: which goreleaser
+      register: goreleaser_check
+      changed_when: false
+      failed_when: false
+
+    - name: Add goreleaser repo
+      become: true
+      ansible.builtin.yum_repository:
+        name: goreleaser
+        description: GoReleaser
+        baseurl: https://repo.goreleaser.com/yum/
+        enabled: true
+        gpgcheck: false
+        exclude: goreleaser-pro
+      when: goreleaser_check.rc != 0
+
+    - name: Install goreleaser
+      become: true
+      ansible.builtin.dnf:
+        name: goreleaser
+        state: present
+      when: goreleaser_check.rc != 0
+
+    # ===================================================================
+    # gnome-tweaks
+    # ===================================================================
+
+    - name: Check if gnome-tweaks is installed
+      ansible.builtin.command: which gnome-tweaks
+      register: gnome_tweaks_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install gnome-tweaks
+      become: true
+      ansible.builtin.dnf:
+        name: gnome-tweaks
+        state: present
+      when: gnome_tweaks_check.rc != 0
+
+    # ===================================================================
+    # Docker
+    # ===================================================================
+
+    - name: Check if docker is installed
+      ansible.builtin.command: which docker
+      register: docker_check
+      changed_when: false
+      failed_when: false
+
+    - name: Remove conflicting container packages
+      become: true
+      ansible.builtin.dnf:
+        state: absent
+        name:
+          - docker
+          - docker-client
+          - docker-client-latest
+          - docker-common
+          - docker-latest
+          - docker-latest-logrotate
+          - docker-logrotate
+          - docker-selinux
+          - docker-engine-selinux
+          - docker-engine
+      when: docker_check.rc != 0
+
+    - name: Add Docker repo
+      become: true
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/fedora/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: "0644"
+      when: docker_check.rc != 0
+
+    - name: Install Docker
+      become: true
+      ansible.builtin.dnf:
+        state: present
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+      when: docker_check.rc != 0
+
+    - name: Start and enable Docker service
+      become: true
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+      when: docker_check.rc != 0
+
+    - name: Add user to docker group
+      become: true
+      ansible.builtin.user:
+        name: "{{ user }}"
+        groups: docker
+        append: true
+
+    # ===================================================================
+    # nvm
+    # ===================================================================
+
+    - name: Check if nvm is installed
+      ansible.builtin.stat:
+        path: "{{ home_dir }}/.nvm"
+      register: nvm_check
+
+    - name: Install nvm
+      ansible.builtin.shell:
+        cmd: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+      when: not nvm_check.stat.exists
+
+    # ===================================================================
+    # VS Code
+    # ===================================================================
+
+    - name: Check if VS Code is installed
+      ansible.builtin.command: which code
+      register: vscode_check
+      changed_when: false
+      failed_when: false
+
+    - name: Import Microsoft GPG key
+      become: true
+      ansible.builtin.rpm_key:
+        key: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+      when: vscode_check.rc != 0
+
+    - name: Add VS Code repo
+      become: true
+      ansible.builtin.yum_repository:
+        name: vscode
+        description: Visual Studio Code
+        baseurl: https://packages.microsoft.com/yumrepos/vscode
+        gpgkey: https://packages.microsoft.com/keys/microsoft.asc
+        gpgcheck: true
+        enabled: true
+      when: vscode_check.rc != 0
+
+    - name: Install VS Code
+      become: true
+      ansible.builtin.dnf:
+        name: code
+        state: present
+      when: vscode_check.rc != 0
+
+    - name: Get installed VS Code extensions
+      ansible.builtin.command: code --list-extensions
+      register: vscode_extensions
+      changed_when: false
+      become: true
+      become_user: devops
+
+    - name: Install VS Code extensions
+      ansible.builtin.command: code --install-extension {{ item }}
+      loop:
+        - anthropic.claude-code
+        - rust-lang.rust-analyzer
+        - golang.go
+        - hashicorp.terraform
+        - usernamehw.indent-one-space
+        - esbenp.prettier-vscode
+        - redhat.vscode-yaml        
+      when: item | lower not in (vscode_extensions.stdout | lower).splitlines()
+      become: true
+      become_user: devops
+
+    # ===================================================================
+    # Google Chrome
+    # ===================================================================
+
+    - name: Check if Google Chrome is installed
+      ansible.builtin.command: which google-chrome
+      register: chrome_check
+      changed_when: false
+      failed_when: false
+
+    - name: Import Google signing key
+      become: true
+      ansible.builtin.rpm_key:
+        key: https://dl.google.com/linux/linux_signing_key.pub
+        state: present
+      when: chrome_check.rc != 0
+
+    - name: Download Google Chrome RPM
+      ansible.builtin.get_url:
+        url: https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+        dest: /tmp/google-chrome-stable.rpm
+      when: chrome_check.rc != 0
+
+    - name: Install Google Chrome
+      become: true
+      ansible.builtin.dnf:
+        name: /tmp/google-chrome-stable.rpm
+        state: present
+      when: chrome_check.rc != 0
+
+    # ===================================================================
+    # Default shell
+    # ===================================================================
+
+    - name: Set zsh as default shell
+      become: true
+      ansible.builtin.user:
+        name: "{{ user }}"
+        shell: /bin/zsh
+      when: ansible_env.SHELL != '/bin/zsh'
+
+    # ===================================================================
+    # Oh My Zsh
+    # ===================================================================
+
+    - name: Check if Oh My Zsh is installed
+      ansible.builtin.stat:
+        path: "{{ home_dir }}/.oh-my-zsh"
+      register: omz_check
+
+    - name: Install Oh My Zsh
+      ansible.builtin.shell: >
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      args:
+        creates: "{{ home_dir }}/.oh-my-zsh"
+      become: true
+      become_user: "{{ user }}"
+
+    - name: Set zsh as default shell
+      become: true
+      ansible.builtin.user:
+        name: "{{ user }}"
+        shell: /usr/bin/zsh
+
+    # ===================================================================
+    # kubectl
+    # ===================================================================
+
+    - name: Check if kubectl is installed
+      ansible.builtin.command: which kubectl
+      register: kubectl_check
+      changed_when: false
+      failed_when: false
+
+    - name: Get latest kubectl version
+      ansible.builtin.uri:
+        url: https://dl.k8s.io/release/stable.txt
+        return_content: true
+      register: kubectl_version
+      when: kubectl_check.rc != 0
+
+    - name: Download kubectl
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.content | trim }}/bin/linux/amd64/kubectl"
+        dest: /tmp/kubectl
+        mode: "0755"
+      when: kubectl_check.rc != 0
+
+    - name: Install kubectl
+      become: true
+      ansible.builtin.copy:
+        src: /tmp/kubectl
+        dest: /usr/local/bin/kubectl
+        mode: "0755"
+        owner: root
+        group: root
+        remote_src: true
+      when: kubectl_check.rc != 0
+
+    # ===================================================================
+    # Helm
+    # ===================================================================
+
+    - name: Check if helm is installed
+      ansible.builtin.command: which helm
+      register: helm_check
+      changed_when: false
+      failed_when: false
+
+    - name: Download Helm
+      ansible.builtin.get_url:
+        url: https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz
+        dest: /tmp/helm.tar.gz
+      when: helm_check.rc != 0
+
+    - name: Extract Helm
+      ansible.builtin.unarchive:
+        src: /tmp/helm.tar.gz
+        dest: /tmp
+      when: helm_check.rc != 0
+
+    - name: Install Helm
+      become: true
+      ansible.builtin.copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        mode: "0755"
+        remote_src: true
+      when: helm_check.rc != 0
+
+    # ===================================================================
+    # Terraform
+    # Note: dnf has no direct equivalent of apt-mark hold.
+    # The excludepkgs option prevents upgrades via regular dnf update.
+    # ===================================================================
+
+    - name: Check if terraform is installed
+      ansible.builtin.command: which terraform
+      register: terraform_check
+      changed_when: false
+      failed_when: false
+
+    - name: Import HashiCorp GPG key
+      become: true
+      ansible.builtin.rpm_key:
+        key: https://rpm.releases.hashicorp.com/gpg
+        state: present
+      when: terraform_check.rc != 0
+
+    - name: Add HashiCorp repo
+      become: true
+      ansible.builtin.get_url:
+        url: https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
+        dest: /etc/yum.repos.d/hashicorp.repo
+        mode: "0644"
+      when: terraform_check.rc != 0
+
+    - name: Install Terraform 1.3.9
+      become: true
+      ansible.builtin.dnf:
+        name: terraform-1.3.9
+        state: present
+      when: terraform_check.rc != 0
+
+    - name: Pin Terraform version (exclude from dnf updates)
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/dnf.conf
+        regexp: "^excludepkgs="
+        line: "excludepkgs=terraform"
+      when: terraform_check.rc != 0
+
+    # ===================================================================
+    # minikube
+    # ===================================================================
+
+    - name: Check if minikube is installed
+      ansible.builtin.command: which minikube
+      register: minikube_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install minikube
+      become: true
+      ansible.builtin.get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        dest: /usr/local/bin/minikube
+        mode: "0755"
+        checksum: "sha256:https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64.sha256"
+      when: minikube_check.rc != 0
