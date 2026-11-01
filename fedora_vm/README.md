@@ -15,6 +15,8 @@
 - ./create_dev_gui_vm.sh dev_gui llm_fedora_base.qcow2
 - ./clone_llm_base_vm.sh gui_vm dev_gui
 - ./run_vm.sh gui_vm
+
+
 - virsh -c qemu:///system domifaddr gui_vm
 
 - virsh -c qemu:///system list --all

@@ -54,6 +54,7 @@
           - findutils
           - firefox
           - ftp
+          - fuse-libs         # libfuse2
           - gcc
           - gcc-c++           # g++
           - gdisk
@@ -64,7 +65,7 @@
           - graphviz
           - jq
           - keychain
-          - fuse-libs         # libfuse2
+          - mc
           - openssl
           - openvpn
           - screen

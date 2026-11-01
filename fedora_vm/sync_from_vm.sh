@@ -20,8 +20,8 @@ if [[ -z "$SOURCE_DIR" || -z "$SOURCE_IP" ]]; then
     exit 1
 fi
 
-SSH_CMD="ssh -i ${script_dir}/vm_llm -o IdentitiesOnly=yes"
-RSYNC_SRC="llm@${SOURCE_IP}:${SOURCE_DIR}/"
+SSH_CMD="ssh -i ${script_dir}/vm_devops -o IdentitiesOnly=yes"
+RSYNC_SRC="devops@${SOURCE_IP}:${SOURCE_DIR}/"
 
 deletions="$(rsync -avzn --delete-after -i -e "$SSH_CMD" "$RSYNC_SRC" "${DESTINATION_DIR}/" | grep '^\*deleting' || true)"
 
