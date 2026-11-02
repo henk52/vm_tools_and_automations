@@ -16,6 +16,9 @@ source "$(dirname "$0")/common_base_vm.sh"
 NEW_VM_NAME="${1:-}"
 SOURCE_QCOW_FILE="${2:-}"
 
+# This is expected to already exist in the VM.
+DEV_USER_NAME="llm"
+
 if [[ -z "$NEW_VM_NAME" || -z "$SOURCE_QCOW_FILE" ]]; then
     echo "Usage: $0 <new-vm-name> <source-qcow-file>" >&2
     echo "  <source-qcow-file> may be a full path, or a base image name (as produced by virt-cloud-builder.sh)" >&2
@@ -76,13 +79,6 @@ EOF
 
 cat > "$CLOUD_INIT_DIR/user-data" <<EOF
 #cloud-config
-users:
-  - name: llm
-    lock_passwd: true
-    shell: /bin/bash
-    sudo: false
-    ssh_authorized_keys:
-      - $(cat "$LLM_SSH_PUB")
 
 write_files:
   # Written to /root, not /home/llm: the write-files module runs before the
@@ -97,11 +93,11 @@ write_files:
 runcmd:
   - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install --update
   - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-  - cp /root/extra_llm_files.zip /home/llm/extra_llm_files.zip && chown llm:llm /home/llm/extra_llm_files.zip
-  - sudo -u llm -i bash -c "unzip -o -q ~/extra_llm_files.zip -d ~ && rm -f ~/extra_llm_files.zip"
-  - sudo -u llm -i bash -c "curl -fsSL https://claude.ai/install.sh | bash"
-  - sudo -u llm -i bash -c "curl -fsSL https://antigravity.google/cli/install.sh | bash"
-  - sudo -u llm -i bash -c "cp ~/.claude/CLAUDE.md ~/.gemini/GEMINI.md"
+  - cp /root/extra_llm_files.zip /home/${DEV_USER_NAME}/extra_llm_files.zip && chown ${DEV_USER_NAME}:${DEV_USER_NAME} /home/${DEV_USER_NAME}/extra_llm_files.zip
+  - sudo -u ${DEV_USER_NAME} -i bash -c "unzip -o -q ~/extra_llm_files.zip -d ~ && rm -f ~/extra_llm_files.zip"
+  - sudo -u ${DEV_USER_NAME} -i bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+  - sudo -u ${DEV_USER_NAME} -i bash -c "curl -fsSL https://antigravity.google/cli/install.sh | bash"
+  - sudo -u ${DEV_USER_NAME} -i bash -c "cp ~/.claude/CLAUDE.md ~/.gemini/GEMINI.md"
 
 # Shut down once provisioning is done. The VM gets transferred to another
 # system after this, and this lets the build script detect completion the

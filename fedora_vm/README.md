@@ -3,12 +3,10 @@
 - sudo ./create_base_vm.sh
   - ./destroy_base_vm.sh
 - ./virt_cloud_builder.sh ks_fedora_minimal base_fedora_minimal
-- ./create_llm_base_vm.sh llm_fedora base_fedora_minimal.qcow2
-  - ./destroy_base_vm.sh llm_fedora
-- ./clone_llm_base_vm.sh llm_vm llm_fedora
-- ./run_vm.sh llm_vm
-- ./connect_llm.sh
-  - ssh -i vm_llm -o IdentitiesOnly=yes llm@192.168.122.73
+- ./create_dev_gui_vm.sh dev_gui base_fedora_minimal.qcow2
+- ./clone_llm_base_vm.sh gui_vm dev_gui
+- ./run_vm.sh gui_vm
+  - ssh -i gui_vm -o IdentitiesOnly=yes llm@192.168.122.73
 - ./sync_to_vm.sh extra_llm_files 192.168.122.73 test
 
 - ./virt_cloud_builder.sh llm_fedora llm_fedora_base
