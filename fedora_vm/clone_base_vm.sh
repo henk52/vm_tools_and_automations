@@ -4,8 +4,8 @@ set -euo pipefail
 
 source "$(dirname "$0")/common_all.sh"
 
-NEW_VM_NAME="${1:-}"
-BASE_VM_NAME="${2:-}"
+BASE_VM_NAME="${1:-}"
+NEW_VM_NAME="${2:-}"
 
 # The "devops" account and its key are baked into the base image by ks.cfg.
 # Not needed by this script (cloud-init completion is verified without
@@ -38,5 +38,5 @@ echo "==> VM '$NEW_VM_NAME' is provisioned and shut off, ready to transfer."
 #echo "    Disk       : $DISK_PATH"
 echo "    Start it   : virsh start $NEW_VM_NAME"
 echo "    Find its IP: virsh domifaddr $NEW_VM_NAME"
-echo "    SSH        : ssh -i $LLM_SSH_KEY -o IdentitiesOnly=yes llm@<ip>"
+echo "    SSH        : ssh -i $LLM_SSH_KEY -o IdentitiesOnly=yes devops@<ip>"
 echo "    Rescue SSH : ssh -i $DEVOPS_SSH_KEY -o IdentitiesOnly=yes devops@<ip>"

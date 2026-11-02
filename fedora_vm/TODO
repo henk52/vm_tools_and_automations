@@ -1,2 +1,10 @@
+- Add calculator app
+- how to set dark mode
+- get multi-monitor to work
+- clean-up creation script, Do I need virt_cloud_builder.sh
+  - what is the difference between the actions in virt_cloud_builder.sh and the end of create_dev_gui_vm.sh
+- Is it possible to autopin apps to the favorite bar
+- Is it possible to automatically set an avatar for a user, during creation?
+
 - Once on Fedora switch the ext4 partitions to xfs in ks.cfg
   - Ubuntu 22 does not understand fedora 44 xfs

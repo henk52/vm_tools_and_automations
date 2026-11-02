@@ -1,0 +1,134 @@
+# Minimal GNOME desktop for Fedora, run locally by cloud-init (as root).
+# Manual run: ansible-playbook -i localhost, -c local gnome-desktop.yml
+- name: Install minimal GNOME on Fedora
+  hosts: localhost
+  connection: local
+  become: true
+  vars:
+     host_ip: 192.168.122.1
+  tasks:
+    - name: Install minimal GNOME packages
+      ansible.builtin.dnf5:
+        name:
+          - "@base-graphical"
+          - gdm
+          - gnome-shell
+          - gnome-control-center
+          - ptyxis
+          - nautilus
+          - gnome-control-center
+          - spice-vdagent
+          - gnome-abrt
+          - gnome-calculator
+          - gnome-logs
+          - gnome-system-monitor
+          - gnome-packagekit
+          - gnome-text-editor
+          - gnome-tweaks
+          - chromium
+          - firefox
+        state: present
+
+    - name: Set Danish keyboard (console, GDM and default for GNOME)
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - localectl set-keymap dk
+        - localectl set-x11-keymap dk
+      changed_when: true
+
+    - name: Get current default target
+      ansible.builtin.command: systemctl get-default
+      register: default_target
+      changed_when: false
+
+    - name: Boot into the GUI by default
+      ansible.builtin.command: systemctl set-default graphical.target
+      when: default_target.stdout != "graphical.target"
+
+    - name: Ensure gnome-remote-desktop is installed
+      ansible.builtin.dnf:
+        name: gnome-remote-desktop
+        state: present
+
+    - name: Enable RDP (system mode)
+      ansible.builtin.command: grdctl --system rdp enable
+      changed_when: false
+
+    # thes two rdp_ vars are available via the /root/rdp-secrets.yml created by cloud-init.
+    - name: Set RDP credentials
+      ansible.builtin.command:
+        argv:
+          - grdctl
+          - --system
+          - rdp
+          - set-credentials
+          - "{{ rdp_user }}"
+          - "{{ rdp_password }}"
+      no_log: true
+      changed_when: false
+
+    # get information from /etc/passwd.
+    - name: Get gnome-remote-desktop home
+      ansible.builtin.getent:
+        database: passwd
+        key: gnome-remote-desktop
+
+    - name: Set GRD cert directory
+      ansible.builtin.set_fact:
+        grd_dir: "{{ getent_passwd['gnome-remote-desktop'][4] }}/.local/share/gnome-remote-desktop"
+
+    - name: Create cert directory
+      ansible.builtin.file:
+        path: "{{ grd_dir }}"
+        state: directory
+        owner: gnome-remote-desktop
+        group: gnome-remote-desktop
+        mode: '0700'
+
+    - name: Generate self-signed RDP TLS cert
+      ansible.builtin.command: >
+        openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509
+        -subj "/CN={{ ansible_hostname }}"
+        -keyout {{ grd_dir }}/rdp-tls.key -out {{ grd_dir }}/rdp-tls.crt
+      args:
+        creates: "{{ grd_dir }}/rdp-tls.crt"
+      become_user: gnome-remote-desktop
+
+    - name: Configure TLS key and cert
+      ansible.builtin.command: "grdctl --system rdp {{ item }}"
+      loop:
+        - "set-tls-key {{ grd_dir }}/rdp-tls.key"
+        - "set-tls-cert {{ grd_dir }}/rdp-tls.crt"
+      changed_when: false
+
+
+    - name: Ensure firewalld is installed
+      ansible.builtin.dnf:
+        name: firewalld
+        state: present
+
+    - name: Ensure firewalld is running
+      ansible.builtin.systemd_service:
+        name: firewalld
+        enabled: true
+        state: started
+
+    - name: Ensure RDP is not open to everyone
+      ansible.posix.firewalld:
+        service: rdp
+        permanent: true
+        immediate: true
+        state: disabled
+
+    - name: Allow RDP only from the host
+      ansible.posix.firewalld:
+        rich_rule: 'rule family="ipv4" source address="{{ host_ip }}/32" service name="rdp" accept'
+        permanent: true
+        immediate: true
+        state: enabled
+
+    - name: Enable and start gnome-remote-desktop
+      ansible.builtin.systemd_service:
+        name: gnome-remote-desktop.service
+        enabled: true
+        state: started

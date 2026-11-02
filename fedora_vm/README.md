@@ -3,10 +3,14 @@
 - sudo ./create_base_vm.sh
   - ./destroy_base_vm.sh
 - ./virt_cloud_builder.sh ks_fedora_minimal base_fedora_minimal
-- ./create_dev_gui_vm.sh dev_gui base_fedora_minimal.qcow2
-- ./clone_llm_base_vm.sh gui_vm dev_gui
+  - rm ~/tmp/base_fedora_minimal.qcow2
+- ./create_dev_gui_vm.sh base_fedora_minimal.qcow2 base_dev_gui
+  - ~9 min
+  - ./destroy_base_vm.sh base_dev_gui
+- ./clone_base_vm.sh base_dev_gui gui_vm
 - ./run_vm.sh gui_vm
-  - ssh -i gui_vm -o IdentitiesOnly=yes llm@192.168.122.73
+  - ./destroy_base_vm.sh gui_vm
+  - ssh -i vm_devops -o IdentitiesOnly=yes devops@192.168.122.73
 - ./sync_to_vm.sh extra_llm_files 192.168.122.73 test
 
 - ./virt_cloud_builder.sh llm_fedora llm_fedora_base
