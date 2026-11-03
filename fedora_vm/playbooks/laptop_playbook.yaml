@@ -88,29 +88,31 @@
     # goreleaser
     # ===================================================================
 
-    - name: Check if goreleaser is installed
-      ansible.builtin.command: which goreleaser
-      register: goreleaser_check
-      changed_when: false
-      failed_when: false
+    # Rate limited exeedec
 
-    - name: Add goreleaser repo
-      become: true
-      ansible.builtin.yum_repository:
-        name: goreleaser
-        description: GoReleaser
-        baseurl: https://repo.goreleaser.com/yum/
-        enabled: true
-        gpgcheck: false
-        exclude: goreleaser-pro
-      when: goreleaser_check.rc != 0
+    # - name: Check if goreleaser is installed
+    #   ansible.builtin.command: which goreleaser
+    #   register: goreleaser_check
+    #   changed_when: false
+    #   failed_when: false
 
-    - name: Install goreleaser
-      become: true
-      ansible.builtin.dnf:
-        name: goreleaser
-        state: present
-      when: goreleaser_check.rc != 0
+    # - name: Add goreleaser repo
+    #   become: true
+    #   ansible.builtin.yum_repository:
+    #     name: goreleaser
+    #     description: GoReleaser
+    #     baseurl: https://repo.goreleaser.com/yum/
+    #     enabled: true
+    #     gpgcheck: false
+    #     exclude: goreleaser-pro
+    #   when: goreleaser_check.rc != 0
+
+    # - name: Install goreleaser
+    #   become: true
+    #   ansible.builtin.dnf:
+    #     name: goreleaser
+    #     state: present
+    #   when: goreleaser_check.rc != 0
 
     # ===================================================================
     # gnome-tweaks
@@ -300,7 +302,6 @@
       ansible.builtin.user:
         name: "{{ user }}"
         shell: /bin/zsh
-      when: ansible_env.SHELL != '/bin/zsh'
 
     # ===================================================================
     # Oh My Zsh

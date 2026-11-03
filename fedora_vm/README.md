@@ -5,7 +5,7 @@
 - ./virt_cloud_builder.sh ks_fedora_minimal base_fedora_minimal
   - rm ~/tmp/base_fedora_minimal.qcow2
 - ./create_dev_gui_vm.sh base_fedora_minimal.qcow2 base_dev_gui
-  - ~9 min
+  - ~32 min
   - ./destroy_base_vm.sh base_dev_gui
 - ./clone_base_vm.sh base_dev_gui gui_vm
 - ./run_vm.sh gui_vm
@@ -44,12 +44,9 @@ Mitigations
 - Disable clipboard, shared folders, printer, audio and USB redirection.
 - Keep Remmina and FreeRDP updated.
 - Run Remmina as a Flatpak or under a separate user to limit damage.
-- For a local VM, prefer the hypervisor’s own console (e.g. virt-manager/SPICE) with sharing features off.
-- Don’t save credentials, and use network isolation for the VM.
 
 
 - ssh -i vm_devops -o IdentitiesOnly=yes devops@192.168.122.155
-- sudo dnf -y install ansible
 
 ## Troubleshooting
 

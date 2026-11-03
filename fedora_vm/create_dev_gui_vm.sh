@@ -12,8 +12,8 @@ set -euo pipefail
 source "$(dirname "$0")/common_all.sh"
 source "$(dirname "$0")/common_base_vm.sh"
 
-NEW_VM_NAME="${1:-}"
-SOURCE_QCOW_FILE="${2:-}"
+SOURCE_QCOW_FILE="${1:-}"
+NEW_VM_NAME="${2:-}"
 
 DEV_USER_NAME="devops"
 
@@ -32,35 +32,43 @@ else
 fi
 
 # ── Adjust these variables ──────────────────────────────────────
-LLM_VM_NAME="${NEW_VM_NAME}"
+NEW_VM_NAME="${NEW_VM_NAME}"
 VCPUS=2
 MEM_MB=8192
-DISK_PATH="/var/lib/libvirt/images/${LLM_VM_NAME}.qcow2"
-CLOUDINIT_ISO="/var/lib/libvirt/images/${LLM_VM_NAME}-cloudinit.iso"
-LLM_SSH_KEY="$(dirname "$0")/vm_llm"
-LLM_SSH_PUB="${LLM_SSH_KEY}.pub"
-PLAYBOOK="$(dirname "$0")/playbooks/gnome-desktop.yml"
+DISK_PATH="/var/lib/libvirt/images/${NEW_VM_NAME}.qcow2"
+CLOUDINIT_ISO="/var/lib/libvirt/images/${NEW_VM_NAME}-cloudinit.iso"
+DEVOPS_SSH_KEY="$(dirname "$0")/vm_devops"
+LLM_SSH_PUB="${DEVOPS_SSH_KEY}.pub"
+GNOME_PLAYBOOK="$(dirname "$0")/playbooks/gnome-desktop.yaml"
+LAPTOP_PLAYBOOK="$(dirname "$0")/playbooks/laptop_playbook.yaml"
+CUSTOMIZE_GNOME_UI_PLAYBOOK="$(dirname "$0")/playbooks/customize_gnome_ui.yaml"
 
 # Verify prerequisites
 for cmd in virt-install virsh xorriso qemu-img virt-cat zip; do
     command -v "$cmd" &>/dev/null || { echo "ERROR: $cmd not found."; exit 1; }
 done
 [[ -f "$BASE_IMAGE_PATH" ]] || { echo "ERROR: base image not found: $BASE_IMAGE_PATH (run create_base_vm.sh + virt-cloud-builder.sh first)"; exit 1; }
-[[ -f "$PLAYBOOK" ]] || { echo "ERROR: playbook not found: $PLAYBOOK"; exit 1; }
-
+[[ -f "$GNOME_PLAYBOOK" ]] || { echo "ERROR: playbook not found: $GNOME_PLAYBOOK"; exit 1; }
+[[ -f "$LAPTOP_PLAYBOOK" ]] || { echo "ERROR: playbook not found: $LAPTOP_PLAYBOOK"; exit 1; }
+[[ -f "$CUSTOMIZE_GNOME_UI_PLAYBOOK" ]] || { echo "ERROR: playbook not found: $CUSTOMIZE_GNOME_UI_PLAYBOOK"; exit 1; }
 set_valid_os_variant
 
-if [[ ! -f "$LLM_SSH_KEY" ]]; then
-    echo "==> Generating SSH keypair for the llm user: $LLM_SSH_KEY"
-    ssh-keygen -q -N "" -t ed25519 -f "$LLM_SSH_KEY" -C "llm account for $LLM_VM_NAME"
+if [[ ! -f "$DEVOPS_SSH_KEY" ]]; then
+    echo "==> Generating SSH keypair for the llm user: $DEVOPS_SSH_KEY"
+    ssh-keygen -q -N "" -t ed25519 -f "$DEVOPS_SSH_KEY" -C "devops account for $NEW_VM_NAME"
 fi
 
 echo "==> Packaging extra_llm_files for the llm user"
 EXTRA_LLM_FILES_DIR="$(dirname "$0")/extra_llm_files"
 EXTRA_LLM_FILES_B64="$(cd "$EXTRA_LLM_FILES_DIR" && zip -qr - . | base64 -w0)"
 
-echo "==> Packaging Ansible playbook: $PLAYBOOK"
-PLAYBOOK_B64="$(base64 -w0 < "$PLAYBOOK")"
+echo "==> Packaging Ansible playbook: $GNOME_PLAYBOOK"
+GNOME_PLAYBOOK_B64="$(base64 -w0 < "$GNOME_PLAYBOOK")"
+echo "==> Packaging Ansible playbook: $GNOME_PLAYBOOK"
+LAPTOP_PLAYBOOK_B64="$(base64 -w0 < "$LAPTOP_PLAYBOOK")"
+echo "==> Packaging Ansible playbook: $LAPTOP_PLAYBOOK"
+CUSTOMIZE_GNOME_UI_PLAYBOOK_B64="$(base64 -w0 < "$CUSTOMIZE_GNOME_UI_PLAYBOOK")"
+echo "==> Packaging Ansible playbook: $CUSTOMIZE_GNOME_UI_PLAYBOOK"
 
 echo "==> Copying base image"
 echo "    Source: $BASE_IMAGE_PATH"
@@ -72,12 +80,16 @@ CLOUD_INIT_DIR="$(mktemp -d)"
 trap 'rm -rf "$CLOUD_INIT_DIR"' EXIT
 
 cat > "$CLOUD_INIT_DIR/meta-data" <<EOF
-instance-id: ${LLM_VM_NAME}
-local-hostname: ${LLM_VM_NAME}
+instance-id: ${NEW_VM_NAME}
+local-hostname: ${NEW_VM_NAME}
 EOF
 
 cat > "$CLOUD_INIT_DIR/user-data" <<EOF
 #cloud-config
+packages:
+  - ansible-core
+  - ansible-collection-ansible-posix
+  - ansible-collection-community-general
 
 write_files:
   # Written to /root: write_files runs before the llm user exists.
@@ -85,15 +97,32 @@ write_files:
     encoding: b64
     permissions: '0600'
     content: ${EXTRA_LLM_FILES_B64}
-  - path: /root/gnome-desktop.yml
+  - path: /root/gnome-desktop.yaml
     encoding: b64
     permissions: '0600'
-    content: ${PLAYBOOK_B64}
+    content: ${GNOME_PLAYBOOK_B64}
+  - path: /root/laptop_playbook.yaml
+    encoding: b64
+    permissions: '0600'
+    content: ${LAPTOP_PLAYBOOK_B64}
+  - path: /root/customize_gnome_ui.yaml
+    encoding: b64
+    permissions: '0600'
+    content: ${CUSTOMIZE_GNOME_UI_PLAYBOOK_B64}
+  - path: /root/rdp-secrets.yml
+    owner: root:root
+    permissions: '0600'
+    content: |
+      rdp_user: rdpuser
+      rdp_password: "SuperSecret"
+
 
 runcmd:
   # GNOME desktop via Ansible (output also lands in /var/log/cloud-init-output.log)
   - dnf install -y ansible-core python3-libdnf5
-  - ansible-playbook -i localhost, -c local /root/gnome-desktop.yml 2>&1 | tee /var/log/ansible-gnome-desktop.log
+  - ansible-playbook -i localhost, -c local  -e @/root/rdp-secrets.yml /root/gnome-desktop.yaml 2>&1 | tee /var/log/ansible-gnome-desktop.log
+  - ansible-playbook -i localhost, -c local  /root/laptop_playbook.yaml 2>&1 | tee /var/log/ansible-laptop-playbook.log
+  - ansible-playbook -i localhost, -c local  /root/customize_gnome_ui.yaml 2>&1 | tee /var/log/ansible-customize-gnome-ui.log
   - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install --update
   - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
   - cp /root/extra_llm_files.zip /home/${DEV_USER_NAME}/extra_llm_files.zip && chown ${DEV_USER_NAME}:${DEV_USER_NAME} /home/${DEV_USER_NAME}/extra_llm_files.zip
@@ -101,6 +130,9 @@ runcmd:
   - sudo -u ${DEV_USER_NAME} -i bash -c "curl -fsSL https://claude.ai/install.sh | bash"
   - sudo -u ${DEV_USER_NAME} -i bash -c "curl -fsSL https://antigravity.google/cli/install.sh | bash"
   - sudo -u ${DEV_USER_NAME} -i bash -c "cp ~/.claude/CLAUDE.md ~/.gemini/GEMINI.md"
+  - sudo -u ${DEV_USER_NAME} -i bash -c "mkdir -p ~/workspace"
+  - sudo -u ${DEV_USER_NAME} -i bash -c "gsettings set org.gnome.desktop.interface gtk-enable-primary-paste true"
+  - shred -u /root/rdp-secrets.yml
 
 power_state:
   mode: poweroff
@@ -108,7 +140,7 @@ power_state:
 EOF
 
 mkdir -p "$HOME/tmp"
-LOCAL_CLOUDINIT_ISO="$HOME/tmp/${LLM_VM_NAME}-cloudinit.iso"
+LOCAL_CLOUDINIT_ISO="$HOME/tmp/${NEW_VM_NAME}-cloudinit.iso"
 
 echo "==> Building cloud-init ISO: $LOCAL_CLOUDINIT_ISO"
 xorriso -as genisoimage \
@@ -121,7 +153,7 @@ echo "==> Installing cloud-init ISO into place: $CLOUDINIT_ISO"
 sudo cp "$LOCAL_CLOUDINIT_ISO" "$CLOUDINIT_ISO"
 rm -f "$LOCAL_CLOUDINIT_ISO"
 
-echo "==> Creating VM: $LLM_VM_NAME"
+echo "==> Creating VM: $NEW_VM_NAME"
 echo "    Disk     : $DISK_PATH"
 echo "    Cloudinit: $CLOUDINIT_ISO"
 echo "    OS hint  : $OS_VARIANT"
@@ -129,7 +161,7 @@ echo "    OS hint  : $OS_VARIANT"
 # SPICE + virtio video for the GNOME desktop; serial console kept for debugging.
 virt-install \
     --connect      "${LIBVIRT_DEFAULT_URI}" \
-    --name         "$LLM_VM_NAME" \
+    --name         "$NEW_VM_NAME" \
     --vcpus        "$VCPUS" \
     --memory       "$MEM_MB" \
     --os-variant   "$OS_VARIANT" \
@@ -143,31 +175,31 @@ virt-install \
     --noautoconsole
 
 echo
-echo "==> Waiting for cloud-init to finish provisioning and '$LLM_VM_NAME' to shut off..."
+echo "==> Waiting for cloud-init to finish provisioning and '$NEW_VM_NAME' to shut off..."
 while true; do
-    state=$(virsh domstate "$LLM_VM_NAME" 2>/dev/null || echo "unknown")
+    state=$(virsh domstate "$NEW_VM_NAME" 2>/dev/null || echo "unknown")
     [[ "$state" == "shut off" ]] && break
     echo "    VM state: $state — waiting 10s..."
     sleep 10
 done
 
 echo "==> Verifying cloud-init completed successfully..."
-CLOUD_INIT_RESULT="$(sudo virt-cat -d "$LLM_VM_NAME" /var/lib/cloud/data/result.json 2>/dev/null || true)"
+CLOUD_INIT_RESULT="$(sudo virt-cat -d "$NEW_VM_NAME" /var/lib/cloud/data/result.json 2>/dev/null || true)"
 if [[ -z "$CLOUD_INIT_RESULT" ]]; then
-    echo "WARNING: could not read cloud-init result.json; inspect with: sudo virt-cat -d $LLM_VM_NAME /var/log/cloud-init-output.log"
+    echo "WARNING: could not read cloud-init result.json; inspect with: sudo virt-cat -d $NEW_VM_NAME /var/log/cloud-init-output.log"
 elif grep -qE '"errors":[[:space:]]*\[\]' <<< "$CLOUD_INIT_RESULT"; then
     echo "    cloud-init finished with no errors."
 else
     echo "WARNING: cloud-init reported errors: $CLOUD_INIT_RESULT"
-    echo "         Inspect with: sudo virt-cat -d $LLM_VM_NAME /var/log/cloud-init-output.log"
+    echo "         Inspect with: sudo virt-cat -d $NEW_VM_NAME /var/log/cloud-init-output.log"
 fi
 
 echo "==> Ansible result (last lines):"
-sudo virt-cat -d "$LLM_VM_NAME" /var/log/ansible-gnome-desktop.log 2>/dev/null | tail -n 5 || \
+sudo virt-cat -d "$NEW_VM_NAME" /var/log/ansible-gnome-desktop.log 2>/dev/null | tail -n 5 || \
     echo "WARNING: could not read /var/log/ansible-gnome-desktop.log"
 
 echo "==> eject iso"
-virsh change-media "$LLM_VM_NAME" sda --eject --config
+virsh change-media "$NEW_VM_NAME" sda --eject --config
 
 echo "==> clean vm to be ready for cloning"
-sudo virt-sysprep --domain "$LLM_VM_NAME" --operations defaults,-ssh-userdir
+# TODO sudo virt-sysprep --domain "$NEW_VM_NAME" --operations defaults,-ssh-userdir

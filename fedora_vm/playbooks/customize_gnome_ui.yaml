@@ -1,0 +1,108 @@
+---
+- name: Configure GNOME defaults on Fedora 44
+  hosts: localhost
+  become: true
+
+  vars:
+    user_name: devops
+    # Local file on the control node, or use a stock face, e.g.
+    # /usr/share/pixmaps/faces/<image>.jpg with remote_src: true
+    avatar_src: /usr/share/pixmaps/faces/calculator.jpg
+    lock_settings: false
+    favorite_apps:
+      - org.mozilla.firefox.desktop
+      - org.gnome.Nautilus.desktop
+      - org.gnome.Ptyxis.desktop
+      - org.gnome.Calculator.desktop
+
+  tasks:
+    # --- Avatar (AccountsService) ---
+    - name: Ensure AccountsService directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/lib/AccountsService/icons
+        - /var/lib/AccountsService/users
+
+    - name: Copy avatar image
+      ansible.builtin.copy:
+        src: "{{ avatar_src }}"
+        dest: "/var/lib/AccountsService/icons/{{ user_name }}"
+        mode: "0644"
+      notify: Restart accounts-daemon
+
+    - name: Point AccountsService to the avatar
+      community.general.ini_file:
+        path: "/var/lib/AccountsService/users/{{ user_name }}"
+        section: User
+        option: "{{ item.key }}"
+        value: "{{ item.value }}"
+        no_extra_spaces: true
+        mode: "0600"
+      loop:
+        - { key: Icon, value: "/var/lib/AccountsService/icons/{{ user_name }}" }
+        - { key: SystemAccount, value: "false" }
+      notify: Restart accounts-daemon
+
+    # --- dconf defaults ---
+    - name: Ensure dconf user profile exists (left alone if present)
+      ansible.builtin.copy:
+        dest: /etc/dconf/profile/user
+        content: |
+          user-db:user
+          system-db:local
+        force: false
+        mode: "0644"
+
+    - name: Ensure dconf directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /etc/dconf/db/local.d
+        - /etc/dconf/db/local.d/locks
+
+    - name: Write GNOME defaults
+      ansible.builtin.copy:
+        dest: /etc/dconf/db/local.d/00-defaults
+        mode: "0644"
+        content: |
+          [org/gnome/desktop/interface]
+          color-scheme='prefer-dark'
+          clock-format='24h'
+          accent-color='green'
+
+          [org/gtk/settings/file-chooser]
+          clock-format='24h'
+
+          [org/gtk/gtk4/settings/file-chooser]
+          clock-format='24h'
+
+          [org/gnome/shell]
+          favorite-apps={{ favorite_apps | to_json | replace('"', "'") }}
+      notify: Update dconf
+
+    - name: Lock settings (optional)
+      ansible.builtin.copy:
+        dest: /etc/dconf/db/local.d/locks/00-defaults
+        mode: "0644"
+        content: |
+          /org/gnome/desktop/interface/color-scheme
+          /org/gnome/desktop/interface/clock-format
+          /org/gnome/desktop/interface/accent-color
+          /org/gnome/shell/favorite-apps
+      when: lock_settings | bool
+      notify: Update dconf
+
+  handlers:
+    - name: Update dconf
+      ansible.builtin.command: dconf update
+      changed_when: true
+
+    - name: Restart accounts-daemon
+      ansible.builtin.systemd_service:
+        name: accounts-daemon
+        state: restarted
