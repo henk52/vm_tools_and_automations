@@ -1,3 +1,5 @@
+- add configuration of zsh
+- add .zshrc to workspace and add an optional include in ~devops/.zshrc
 - increase resources for gui_vm
 - improve the ansible failure detection script code.
 - get multi-monitor to work

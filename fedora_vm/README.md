@@ -7,7 +7,8 @@
 - ./create_dev_gui_vm.sh base_fedora_minimal.qcow2 base_dev_gui
   - ~32 min
   - ./destroy_base_vm.sh base_dev_gui
-- ./clone_base_vm.sh base_dev_gui gui_vm
+- ./clone_base_vm.sh base_dev_gui gui_vm [disk-size-gb]
+  - Disk size defaults to the base VM disk size; root LV is grown with virt-resize (needs guestfs-tools)
 - ./run_vm.sh gui_vm
   - ./destroy_base_vm.sh gui_vm
   - ssh -i vm_devops -o IdentitiesOnly=yes devops@192.168.122.73

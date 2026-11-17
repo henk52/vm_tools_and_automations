@@ -15,7 +15,7 @@ source "$(dirname "$0")/common_base_vm.sh"
 # ── Adjust these variables ──────────────────────────────────────
 VCPUS=2
 MEM_MB=8192
-DISK_GB=20
+DISK_GB=32
 DISK_PATH="/var/lib/libvirt/images/${VM_NAME}.qcow2"
 BRIDGE="virbr0"           # or your custom bridge, e.g. br0
 KS_FILE="$(dirname "$0")/ks.cfg"   # path to the kickstart file

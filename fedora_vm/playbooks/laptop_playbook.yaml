@@ -50,6 +50,7 @@
           - java-latest-openjdk-headless
           - java-latest-openjdk
           - util-linux
+          - eza
           - filezilla
           - findutils
           - firefox
@@ -74,6 +75,7 @@
           - tar
           - tcpdump
           - telnet
+          - the_silver_searcher
           - tmux
           - unzip
           - util-linux
